@@ -6,6 +6,8 @@ import requests
 
 from PIL import Image
 
+from tqdm import tqdm
+
 
 def create_imagewoof_dataloader(
     path_data,
@@ -277,7 +279,7 @@ class ImageNetDataset(torch.utils.data.Dataset):
         else:
             path = os.path.join(path, "val")
         for root, _, files in os.walk(path):
-            for file in files:
+            for file in tqdm(files):
                 #print(files)
                 self.files.append(os.path.join(root, file))
 
