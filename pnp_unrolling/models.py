@@ -75,8 +75,7 @@ class UnrolledNet(nn.Module):
             self.kernel_size
         )
 
-        self.generator = torch.Generator(self.device)
-        self.generator.manual_seed(random_state)
+        self.random_state = random_state
 
         self.init_dual = init_dual
 
@@ -84,7 +83,7 @@ class UnrolledNet(nn.Module):
 
             self.parameter = init_params(
                 self.shape_params,
-                self.generator,
+                self.random_state,
                 self.dtype,
                 self.device,
                 type_layer
@@ -249,9 +248,7 @@ class UnrolledLayer(nn.Module):
         self.random_state = random_state
         self.activation = activation
         self.step_size_scaling = step_size_scaling
-
-        self.generator = torch.Generator(self.device)
-        self.generator.manual_seed(random_state)
+        self.random_state = random_state
 
         self.shape_params = (
             self.n_components,
@@ -264,7 +261,7 @@ class UnrolledLayer(nn.Module):
 
             self.parameter = init_params(
                 self.shape_params,
-                self.generator,
+                self.random_state,
                 self.dtype,
                 self.device,
                 type_layer
@@ -341,8 +338,9 @@ class SynthesisLayer(UnrolledLayer):
             out = out * (torch.abs(out) >= lmbd)
 
         # FISTA
-        t = 0.5 * (1 + np.sqrt(1 + 4 * t_old * t_old))
-        z = out + ((t_old-1) / t) * (out - z_old)
+        # t = 0.5 * (1 + np.sqrt(1 + 4 * t_old * t_old))
+        # z = out + ((t_old-1) / t) * (out - z_old)
+        t, z = t_old, out
 
         return x, z, t, out
 

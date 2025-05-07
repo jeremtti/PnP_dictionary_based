@@ -27,7 +27,8 @@ def imshow(img, title=None):
 #* ************************************************************************
 #* Power method to compute operator norm
 
-def op_norm2(Phi, Phit, im_size):
+def op_norm2(Phi, Phit, im_size, seed=42):
+    np.random.seed(seed)
     tol = 1e-5
     max_iter = 500
     xtmp = np.random.randn(*im_size)

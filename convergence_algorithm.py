@@ -15,7 +15,7 @@ parser.add_argument('--dimension_signal', type=int, help='Dimension of the signa
 
 parser.add_argument('--dimension_codes', type=int, help='Dimension of the sparse codes', default=100)
 
-parser.add_argument('--seed', type=int, help='Random seed', default=1234)
+parser.add_argument('--seed', type=int, help='Random seed', default=123456)
 
 
 args = parser.parse_args()

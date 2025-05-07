@@ -2,8 +2,10 @@ import torch
 import torch.nn as nn
 
 
-def init_params(shape, generator, dtype, device, type_init):
-
+def init_params(shape, random_state, dtype, device, type_init):
+    
+    torch.manual_seed(random_state)
+    
     if type_init == "analysis":
         # weights = -1 + 2 * torch.rand(
         #     shape,
