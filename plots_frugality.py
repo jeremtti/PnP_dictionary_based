@@ -14,6 +14,7 @@ def plot_psnr_vs_lambda(path_results):
     names = [key for key in list_results[0].keys() if key.startswith("AD") or key.startswith("SD")]
     base_names = list(set([name.rsplit("_", 1)[0] for name in names]))
     base_names.sort()
+    base_names.sort(key=lambda x: (x.split("_")[0],int(x.split("_")[1][:-1])))
     
     n_rep_list = list(set([int(name.split("_")[-1][:-1]) for name in names]))
     n_rep_list.sort()
@@ -75,6 +76,7 @@ def plot_error_vs_lambda(path_results):
     names = [key for key in list_results[0].keys() if key.startswith("AD") or key.startswith("SD")]
     base_names = list(set([name.rsplit("_", 1)[0] for name in names]))
     base_names.sort()
+    base_names.sort(key=lambda x: (x.split("_")[0],int(x.split("_")[1][:-1])))
     
     n_rep_list = list(set([int(name.split("_")[-1][:-1]) for name in names]))
     n_rep_list.sort()
