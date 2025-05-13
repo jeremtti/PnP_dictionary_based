@@ -196,7 +196,7 @@ class UnrolledNet(nn.Module):
 
         elif self.type_layer == "analysis":
 
-            if out is None and self.init_dual:
+            if out is None and not self.init_dual:
                 out = self.conv(x_avg, self.parameter)
 
             elif out is None:

@@ -3,6 +3,7 @@ import yaml
 import time
 import pickle
 import os
+from joblib import Parallel, delayed
 
 import scipy
 import numpy as np
@@ -97,23 +98,51 @@ def lambda_max_synthesis(y, net, Phit):
     Dstar_Astar_y = net.conv(Astar_y, parameter).detach().cpu().numpy()
     return np.max(np.abs(Dstar_Astar_y))
 
-def lambda_max_analysis(y, net, Phit):
+def conv2d_matrix_l1_norms(phi, image_shape):
+    H, W = image_shape
+    a, b = phi.shape
+    out_h = H - a + 1
+    out_w = W - b + 1
     
-    parameter = net.parameter.detach().cpu().numpy()   
+    l1_norms = np.zeros(H * W)
+
+    for i in range(out_h):
+        for j in range(out_w):
+            for di in range(a):
+                for dj in range(b):
+                    row_idx = i + di
+                    col_idx = j + dj
+                    image_idx = row_idx * W + col_idx
+                    l1_norms[image_idx] += abs(phi[di, dj])
+    
+    return l1_norms
+
+def lambda_max_analysis(y, net, Phit, n_jobs=8):
+    
+    parameter = net.parameter.detach().cpu().numpy()
     C, N1, N2 = y.shape
+    K = parameter.shape[0]
+    
     Astar_y = Phi_channels(y, Phit)
     lambda_max = 0
+    
+    def compute_l1_norms_for_k(k, c):
+        return conv2d_matrix_l1_norms(parameter[k, c], (N1, N2))
+
     for c in range(C):
-        norm_gamma_star_i = np.sum(np.abs(parameter[:, c, :, :]))
-        norm_gamma_star_i = np.inf
-        for k in range(parameter.shape[0]):
-            norm_gamma_star_i = min(norm_gamma_star_i, np.sum(np.abs(parameter[k, c, :, :])))
-        print(norm_gamma_star_i)
+        l1_norms_list = Parallel(n_jobs=n_jobs)(
+            delayed(compute_l1_norms_for_k)(k, c) for k in range(K)
+        )
+        l1_norms = np.sum(l1_norms_list, axis=0)
+        
         for n1 in range(N1):
             for n2 in range(N2):
+                norm_gamma_star_i = l1_norms[n1*N2 + n2]
                 current_lambda = np.abs(Astar_y[c, n1, n2] / norm_gamma_star_i)
                 if current_lambda > lambda_max:
                     lambda_max = current_lambda
+    
+    print(f"lambda_max: {lambda_max}")
                     
     return lambda_max
 
@@ -275,16 +304,16 @@ def generate_results_pnp(pth_kernel,
     }    
     
     for name, denoiser in DENOISERS.items():
+        print(f"Denoiser {name}")
             
         if denoiser["model"] == "synthesis":
             lambda_max = lambda_max_synthesis(x_observed, denoiser["net"], Phit)
             lambda_list = np.logspace(np.log10(1*lambda_max), np.log10(1e-5 * lambda_max), n_lambda)
-        elif denoiser["model"] == "drunet":
-            lambda_list = np.logspace(np.log10(1e3), np.log10(1e-2), n_lambda)
+        elif denoiser["model"] == "analysis":
+            lambda_max = lambda_max_analysis(x_observed, denoiser["net"], Phit)
+            lambda_list = np.logspace(np.log10(1*lambda_max), np.log10(1e-5 * lambda_max), n_lambda)
         else:
-            lambda_list = lambdas
-            # lambda_max = lambda_max_analysis(x_observed, denoiser["net"], Phit)
-            # lambda_list = np.logspace(np.log10(0.5*lambda_max), np.log10(1e-5 * lambda_max), n_lambda)
+            lambda_list = np.logspace(np.log10(1e3), np.log10(1e-2), n_lambda)            
         
         results[name] = pnp_deblurring(
             denoiser["model"],
