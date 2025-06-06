@@ -57,18 +57,31 @@ def get_denoiser(model, **kwargs):
         )
     return net
 
-def apply_model(model, x, dual, reg_par, net=None, update_dual=False):
+def apply_model(model, x, dual, reg_par, net=None, update_dual=False, fast=False, dual_fast=None, alpha_fast=None):
 
     if model == "unrolled":
         net.set_lmbd(reg_par)
         x_torch = torch.tensor(x, device=DEVICE, dtype=torch.float)[None, :]
         if dual is not None:
             dual = torch.tensor(dual, device=DEVICE, dtype=torch.float)
+        if dual_fast is not None:
+            dual_fast = torch.tensor(dual_fast, device=DEVICE, dtype=torch.float)
         with torch.no_grad():
-            xnet, new_dual = net(x_torch, dual)
+            if fast:
+                xnet, new_dual, new_dual_fast = net(x_torch, dual, True, dual_fast, alpha_fast)
+            else:
+                xnet, new_dual = net(x_torch, dual)
         if not update_dual:
+            if fast:
+                return xnet.detach().cpu().numpy()[0], None, None
             return xnet.detach().cpu().numpy()[0], None
         else:
+            if fast:
+                return (
+                    xnet.detach().cpu().numpy()[0],
+                    new_dual.detach().cpu().numpy(),
+                    new_dual_fast.detach().cpu().numpy()
+                )
             return (
                 xnet.detach().cpu().numpy()[0],
                 new_dual.detach().cpu().numpy()
@@ -96,7 +109,9 @@ def lambda_max_synthesis(y, net, Phit):
     Astar_y = Phi_channels(y, Phit)
     Astar_y = torch.tensor(Astar_y, device=DEVICE, dtype=torch.float)[None, :]
     Dstar_Astar_y = net.conv(Astar_y, parameter).detach().cpu().numpy()
-    return np.max(np.abs(Dstar_Astar_y))
+    lambda_max = np.max(np.abs(Dstar_Astar_y))
+    print(f"lambda_max: {lambda_max}")
+    return lambda_max
 
 def conv2d_matrix_l1_norms(phi, image_shape):
     H, W = image_shape
@@ -117,7 +132,7 @@ def conv2d_matrix_l1_norms(phi, image_shape):
     
     return l1_norms
 
-def lambda_max_analysis(y, net, Phit, n_jobs=8):
+def lambda_max_analysis(y, net, Phit, n_jobs=-1):
     
     parameter = net.parameter.detach().cpu().numpy()
     C, N1, N2 = y.shape
@@ -177,7 +192,8 @@ def pnp_deblurring(
     net=None,
     update_dual=False,
     x_truth=None,
-    std_noise=0.1
+    std_noise=0.1,
+    iter_final = None
 ):
 
     n_lambda = len(lambda_list)
@@ -209,6 +225,7 @@ def pnp_deblurring(
     stops = [0] * (n_lambda+1)
     
     current_dual = None
+    current_dual_fast = None
     t_iter = 0
     
     i = 0
@@ -216,20 +233,26 @@ def pnp_deblurring(
         if not warm_restart:
             x_n = Phi_channels(x_observed, Phit)
             current_dual = None
+            current_dual_fast = None
         
-        for _ in range(n_iter_per_lambda):
+        for t in range(n_iter_per_lambda):
             t_start = time.perf_counter()
             g_n = Phi_channels((Phi_channels(x_n, Phi) - x_observed), Phit)
             tmp = x_n - gamma * g_n
             x_old = x_n.copy()
+
+            if model_type != "synthesis":
+                x_n, current_dual = apply_model(
+                    model, tmp, current_dual, lambda_list[k], net, update_dual
+                )
+            else:
+                alpha = t/(t+4)
+                #alpha = 0
+                x_n, current_dual, current_dual_fast = apply_model(
+                    model, tmp, current_dual, lambda_list[k], net, update_dual,
+                    fast=True, dual_fast=current_dual_fast, alpha_fast=alpha
+                )
             
-            # if i==10:
-            #     print(x_n[0,:3,:3])
-            x_n, current_dual = apply_model(
-                model, tmp, current_dual, lambda_list[k], net, update_dual
-            )
-            # if i==10:
-            #     print(x_n[0,:3,:3])
             t_iter += time.perf_counter() - t_start
             cvg[i] = np.sum((x_n - x_old) ** 2)
             runtime[i] = t_iter
@@ -257,6 +280,50 @@ def pnp_deblurring(
             if error[k] < best_error:
                 best_error = error[k]
                 best_x_error = x_n.copy()
+    
+
+    if iter_final is not None:
+        print(f"best_lambda: {best_lambda}")
+        
+        error_final = [0] * iter_final
+        psnr_final = [0] * iter_final
+        runtime_final = [0] * iter_final
+        cvg_final = [0] * iter_final
+        
+        x_n = Phi_channels(x_observed, Phit)
+        current_dual = None
+        current_dual_fast = None
+        
+        for t in tqdm(range(iter_final)):
+            t_start = time.perf_counter()
+        
+            g_n = Phi_channels((Phi_channels(x_n, Phi) - x_observed), Phit)
+            tmp = x_n - gamma * g_n
+            
+            if model_type == "synthesis":
+                x_old = x_n.copy()
+                alpha = t/(t+4)
+                #alpha = 0
+                x_n, current_dual, current_dual_fast = apply_model(
+                    model, tmp, current_dual, best_lambda, net, update_dual,
+                    fast=True, dual_fast=current_dual_fast, alpha_fast=alpha
+                )
+            else:
+                x_n, current_dual = apply_model(
+                    model, tmp, current_dual, best_lambda, net, update_dual
+                )
+
+            t_iter += time.perf_counter() - t_start
+            runtime_final[t] = t_iter
+            cvg_final[t] = np.sum((x_n - x_old) ** 2)
+            psnr_final[t] = peak_signal_noise_ratio(x_n, x_truth)
+            
+            if model_type == "synthesis":
+                error_final[t] = error_synthesis(current_dual[0], x_observed, net, Phi, best_lambda)
+    
+    else:
+        error_final, psnr_final, runtime_final = None, None, None
+    
             
     return dict(img=np.clip(x_n, 0, 1),
                 cvg=cvg,
@@ -271,7 +338,10 @@ def pnp_deblurring(
                 best_img_error=best_x_error,
                 best_psnr=best_psnr,
                 best_error=best_error,
-                best_lambda=best_lambda)
+                best_lambda=best_lambda,
+                error_final=error_final,
+                psnr_final=psnr_final,
+                runtime_final=runtime_final)
 
 def generate_results_pnp(pth_kernel,
                          std_noise,
@@ -283,6 +353,7 @@ def generate_results_pnp(pth_kernel,
                          lambda_end=1e-5,
                          eps_stop=None,
                          warm_restart=True,
+                         iter_final=None,
                          seed=42
 ):
 
@@ -304,29 +375,34 @@ def generate_results_pnp(pth_kernel,
     }    
     
     for name, denoiser in DENOISERS.items():
+            
         print(f"Denoiser {name}")
             
         if denoiser["model"] == "synthesis":
             lambda_max = lambda_max_synthesis(x_observed, denoiser["net"], Phit)
             lambda_list = np.logspace(np.log10(1*lambda_max), np.log10(1e-5 * lambda_max), n_lambda)
+            n_iter_per_lamb = n_iter_per_lambda
         elif denoiser["model"] == "analysis":
             lambda_max = lambda_max_analysis(x_observed, denoiser["net"], Phit)
             lambda_list = np.logspace(np.log10(1*lambda_max), np.log10(1e-5 * lambda_max), n_lambda)
+            n_iter_per_lamb = n_iter_per_lambda
         else:
-            lambda_list = np.logspace(np.log10(1e3), np.log10(1e-2), n_lambda)            
+            lambda_list = np.logspace(np.log10(1e3), np.log10(1e-2), n_lambda)
+            n_iter_per_lamb = n_iter_per_lambda   
         
         results[name] = pnp_deblurring(
             denoiser["model"],
             pth_kernel,
             x_observed,
             normPhi2=normPhi2,
-            n_iter_per_lambda=n_iter_per_lambda,
+            n_iter_per_lambda=n_iter_per_lamb,
             lambda_list=lambda_list,
             eps_stop=eps_stop,
             warm_restart=warm_restart,
             update_dual=True,
             net=denoiser["net"],
-            x_truth=img
+            x_truth=img,
+            iter_final=iter_final
         )
 
     return results
@@ -362,6 +438,7 @@ def main():
     parser.add_argument("-lambda_end", type=float, default=config.get("lambda_end", 1e-5))
     parser.add_argument("-eps_stop", type=float, default=config.get("eps_stop", None))
     parser.add_argument("-warm_restart", type=lambda x: x.lower() == "true", default=config.get("warm_restart", True))
+    parser.add_argument("-iter_final", type=int, default=config.get("iter_final", None))
     parser.add_argument("-save_path", type=str, default=config.get("save_path", "results.pkl"))
     args = parser.parse_args(remaining_argv)
     
@@ -474,7 +551,8 @@ def main():
                                        lambda_start=args.lambda_start,
                                        lambda_end=args.lambda_end,
                                        eps_stop=args.eps_stop,
-                                       warm_restart=args.warm_restart
+                                       warm_restart=args.warm_restart,
+                                       iter_final=args.iter_final
                                        )
         list_results.append(results)
 

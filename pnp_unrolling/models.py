@@ -163,7 +163,7 @@ class UnrolledNet(nn.Module):
             lipschitz = 1
         return lipschitz
 
-    def forward(self, x, out=None):
+    def forward(self, x, out=None, fast=False, out_fast=None, alpha_fast=None):
 
         if self.avg:
             current_avg = torch.mean(x, axis=(2, 3), keepdim=True)
@@ -183,6 +183,8 @@ class UnrolledNet(nn.Module):
                     dtype=self.dtype,
                     device=self.device
                 )
+            if fast and out_fast is None:
+                out_fast = torch.zeros_like(out)
 
             out_old = out.clone()
             t_old = 1.
@@ -192,6 +194,9 @@ class UnrolledNet(nn.Module):
                     x_avg, out, t_old, out_old, self.lmbd
                 )
 
+            if fast:
+                out, out_fast = out+alpha_fast*(out-out_fast), out
+                
             reconstruction = self.convt(out, self.parameter)
 
         elif self.type_layer == "analysis":
@@ -229,7 +234,10 @@ class UnrolledNet(nn.Module):
         if self.avg:
             reconstruction = reconstruction * current_std + current_avg
 
-        return torch.clip(reconstruction, 0, 1), out
+        if not fast:
+            return torch.clip(reconstruction, 0, 1), out
+        
+        return torch.clip(reconstruction, 0, 1), out, out_fast
 
 
 class UnrolledLayer(nn.Module):

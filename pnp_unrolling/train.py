@@ -3,6 +3,12 @@ import torch.nn as nn
 
 from tqdm import tqdm
 
+def set_seed(seed=42):
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+
 
 def train_loop(
     dataloader,
@@ -13,6 +19,9 @@ def train_loop(
     scheduler=None,
     rescale=False
 ):
+    
+    set_seed()
+    
     avg_loss = 0
     count = 0
     for batch, (X, y) in enumerate(dataloader):

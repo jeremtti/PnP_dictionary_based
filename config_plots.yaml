@@ -1,1 +1,2 @@
-path_results: "experiments/denoising_05_analysis/results.pkl"
+path_results: "experiments/ista2fista_fista/results.pkl"
+max_rows: null
