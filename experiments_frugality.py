@@ -226,6 +226,9 @@ def pnp_deblurring(
     
     current_dual = None
     current_dual_fast = None
+    
+    best_current_dual, best_current_dual_fast = None, None
+    
     t_iter = 0
     
     i = 0
@@ -277,18 +280,66 @@ def pnp_deblurring(
                 best_psnr = psnr[k]
                 best_x_psnr = x_n.copy()
                 best_lambda = lambda_list[k]
+                best_current_dual = current_dual.copy() if current_dual is not None else None
+                best_current_dual_fast = current_dual_fast.copy() if current_dual_fast is not None else None
             if error[k] < best_error:
                 best_error = error[k]
                 best_x_error = x_n.copy()
-    
 
     if iter_final is not None:
         print(f"best_lambda: {best_lambda}")
         
-        error_final = [0] * iter_final
-        psnr_final = [0] * iter_final
-        runtime_final = [0] * iter_final
-        cvg_final = [0] * iter_final
+        error_final_fista = [0] * iter_final
+        psnr_final_fista = [0] * iter_final
+        runtime_final_fista = [0] * iter_final
+        cvg_final_fista = [0] * iter_final
+        t_iter = 0
+        
+        # x_n = best_x_psnr.copy() if best_x_psnr is not None else Phi_channels(x_observed, Phit)
+        # current_dual = best_current_dual.copy() if best_current_dual is not None else None
+        # current_dual_fast = best_current_dual_fast.copy() if best_current_dual_fast is not None else None
+        
+        x_n = Phi_channels(x_observed, Phit)
+        current_dual = None
+        current_dual_fast = None
+        
+        for t in tqdm(range(iter_final)):
+            t_start = time.perf_counter()
+        
+            g_n = Phi_channels((Phi_channels(x_n, Phi) - x_observed), Phit)
+            tmp = x_n - gamma * g_n
+            x_old = x_n.copy()
+            
+            if model_type == "synthesis":
+                alpha = t/(t+4)
+                x_n, current_dual, current_dual_fast = apply_model(
+                    model, tmp, current_dual, best_lambda, net, update_dual,
+                    fast=True, dual_fast=current_dual_fast, alpha_fast=alpha
+                )
+            else:
+                x_n, current_dual = apply_model(
+                    model, tmp, current_dual, best_lambda, net, update_dual
+                )
+
+            t_iter += time.perf_counter() - t_start
+            runtime_final_fista[t] = t_iter
+            cvg_final_fista[t] = np.sum((x_n - x_old) ** 2)
+            psnr_final_fista[t] = peak_signal_noise_ratio(x_n, x_truth)
+            
+            if model_type == "synthesis":
+                error_final_fista[t] = error_synthesis(current_dual[0], x_observed, net, Phi, best_lambda)
+        
+        
+        
+        error_final_ista = [0] * iter_final
+        psnr_final_ista = [0] * iter_final
+        runtime_final_ista = [0] * iter_final
+        cvg_final_ista = [0] * iter_final
+        t_iter = 0
+        
+        # x_n = best_x_psnr.copy() if best_x_psnr is not None else Phi_channels(x_observed, Phit)
+        # current_dual = best_current_dual.copy() if best_current_dual is not None else None
+        # current_dual_fast = best_current_dual_fast.copy() if best_current_dual_fast is not None else None
         
         x_n = Phi_channels(x_observed, Phit)
         current_dual = None
@@ -302,8 +353,7 @@ def pnp_deblurring(
             
             if model_type == "synthesis":
                 x_old = x_n.copy()
-                alpha = t/(t+4)
-                #alpha = 0
+                alpha = 0
                 x_n, current_dual, current_dual_fast = apply_model(
                     model, tmp, current_dual, best_lambda, net, update_dual,
                     fast=True, dual_fast=current_dual_fast, alpha_fast=alpha
@@ -314,15 +364,17 @@ def pnp_deblurring(
                 )
 
             t_iter += time.perf_counter() - t_start
-            runtime_final[t] = t_iter
-            cvg_final[t] = np.sum((x_n - x_old) ** 2)
-            psnr_final[t] = peak_signal_noise_ratio(x_n, x_truth)
+            runtime_final_ista[t] = t_iter
+            cvg_final_ista[t] = np.sum((x_n - x_old) ** 2)
+            psnr_final_ista[t] = peak_signal_noise_ratio(x_n, x_truth)
             
             if model_type == "synthesis":
-                error_final[t] = error_synthesis(current_dual[0], x_observed, net, Phi, best_lambda)
+                error_final_ista[t] = error_synthesis(current_dual[0], x_observed, net, Phi, best_lambda)
+        
     
     else:
-        error_final, psnr_final, runtime_final = None, None, None
+        error_final_fista, psnr_final_fista, runtime_final_fista, cvg_final_fista = None, None, None, None
+        error_final_ista, psnr_final_ista, runtime_final_ista, cvg_final_ista = None, None, None, None
     
             
     return dict(img=np.clip(x_n, 0, 1),
@@ -339,9 +391,14 @@ def pnp_deblurring(
                 best_psnr=best_psnr,
                 best_error=best_error,
                 best_lambda=best_lambda,
-                error_final=error_final,
-                psnr_final=psnr_final,
-                runtime_final=runtime_final)
+                error_final_fista=error_final_fista,
+                psnr_final_fista=psnr_final_fista,
+                runtime_final_fista=runtime_final_fista,
+                cvg_final_fista=cvg_final_fista,
+                error_final_ista=error_final_ista,
+                psnr_final_ista=psnr_final_ista,
+                runtime_final_ista=runtime_final_ista,
+                cvg_final_ista=cvg_final_ista)
 
 def generate_results_pnp(pth_kernel,
                          std_noise,

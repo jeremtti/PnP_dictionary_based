@@ -138,7 +138,7 @@ def plot_psnr_vs_inner_lambda(path_results, idx=0, max_rows=None):
     fig, axs = plt.subplots(n_rows, n_lambda, figsize=(4*n_lambda, 3.5*n_rows))
 
     for i in range(n_rows):
-        axs[i, 0].set_ylabel(names[indices[i]])
+        axs[i, 0].set_ylabel(f"{names[indices[i]]} - PSNR (dB)")
         res = list_results[idx][names[indices[i]]]
         
         y_values = []  # Collect y-values for this row
@@ -154,8 +154,8 @@ def plot_psnr_vs_inner_lambda(path_results, idx=0, max_rows=None):
         # for j in range(n_lambda):
         #     axs[i, j].set_ylim(y_min, y_max)
 
-    for ax in axs[:, 0]:
-        ax.set_ylabel("PSNR (dB)")
+    # for ax in axs[:, 0]:
+    #     ax.set_ylabel(f"PSNR (dB) - denoiser {}
     
     path_name = path_results.split(".")[0] + "_psnr_vs_inner_lambda.pdf"
     fig.savefig(path_name, bbox_inches="tight")
@@ -177,7 +177,7 @@ def plot_error_vs_inner_lambda(path_results, idx=0, max_rows=None):
     fig, axs = plt.subplots(n_rows, n_lambda, figsize=(4*n_lambda, 3.5*n_rows))
 
     for i in range(n_rows):
-        axs[i, 0].set_ylabel(names[indices[i]])
+        axs[i, 0].set_ylabel(f"{names[indices[i]]} - PSNR (dB)")
         res = list_results[idx][names[indices[i]]]
         
         y_values = []  # Collect y-values for this row
@@ -193,8 +193,8 @@ def plot_error_vs_inner_lambda(path_results, idx=0, max_rows=None):
         # for j in range(n_lambda):
         #     axs[i, j].set_ylim(y_min, y_max)
 
-    for ax in axs[:, 0]:
-        ax.set_ylabel("Functional error")
+    # for ax in axs[:, 0]:
+    #     ax.set_ylabel("Functional error")
 
     path_name = path_results.split(".")[0] + "_error_vs_inner_lambda.pdf"
     fig.savefig(path_name, bbox_inches="tight")
@@ -263,28 +263,25 @@ def plot_best_psnr_vs_components(path_results):
     path_name = path_results.split(".")[0] + "_best_psnr_vs_components.pdf"
     fig_lambda.savefig(path_name, bbox_inches="tight")
 
-def plot_final_psnr_vs_runtime(path_results):
+def plot_final_psnr_vs_iterations(path_results):
     
     with open(path_results, "rb") as f:
         list_results = pickle.load(f)
     
     names = [key for key in list_results[0].keys() if key.startswith("AD") or key.startswith("SD")]
-    components_list = list(set([int(name.split("_")[1][:-1]) for name in names]))
-    components_list.sort()
+    base_names = list(set([name.rsplit("_", 1)[0] for name in names]))
+    base_names.sort()
+    base_names.sort(key=lambda x: (x.split("_")[0],int(x.split("_")[1][:-1])))
     
     n_rep_list = list(set([int(name.split("_")[-1][:-1]) for name in names]))
     n_rep_list.sort()
     n_rep_list.remove(1)
     
-    splitted_names = [name.split("_") for name in names]
-    base_names = list(set([name[0]+"_"+name[2] for name in splitted_names]))
-    base_names.sort()
-    
     n_plots = len(base_names)
     n_img = len(list_results)
 
     fig_lambda, axs_lambda = plt.subplots(
-        n_plots, n_img, sharey=True, figsize=(5*n_img, 4*(n_plots))
+        n_plots, n_img, figsize=(4*n_img, 3*(n_plots))
     )
 
     if (n_plots == 1) and (n_img == 1):
@@ -301,30 +298,402 @@ def plot_final_psnr_vs_runtime(path_results):
         psnr = peak_signal_noise_ratio(img, x_observed.astype(np.float32))
         
         for k, base_name in enumerate(base_names):
-            
-            pair_name = base_name.split("_")
-            
+
             for rep in [1] + n_rep_list:
                 
-                denoiser_names = [pair_name[0]+f"_{components}C_"+pair_name[1]+f"_{rep}R" for components in components_list]
-                psnr_list = [results[name]['best_psnr'] for name in denoiser_names]
-                axs_lambda[k, i].scatter(components_list, psnr_list, label=rep, s=20)
-                axs_lambda[k, i].set_xscale('log')
-                axs_lambda[k, i].set_xticks(components_list)
-                axs_lambda[k, i].set_xticklabels([str(val) for val in components_list])#, rotation=45)
+                name = f"{base_name}_{rep}R"
+                res = results[name]
+                axs_lambda[k, i].semilogx(range(1, len(res['psnr_final_fista'])+1), res['psnr_final_fista'], label=rep)
             
             axs_lambda[k, i].set_title(f"{base_name}")
             axs_lambda[k, i].grid(True)
             axs_lambda[k, i].axhline(y=psnr, linestyle='--', alpha=0.5, color="grey")
-            psnr_drunet = results["DRUNet"]['best_psnr']
-            axs_lambda[k, i].axhline(y=psnr_drunet, linestyle='--', alpha=0.5, color="black")
             axs_lambda[k, i].legend(title="# iterations", fontsize=8, title_fontsize=8)
-            axs_lambda[k, i].set_xlabel(f"# atoms")
+            axs_lambda[k, i].set_xlabel(f"PnP iterations")
+
+    for ax in axs_lambda[:, 0]:
+        ax.set_ylabel("PSNR")
+    
+    fig_lambda.tight_layout(rect=[0, 0, 1, 0.9])
+    path_name = path_results.split(".")[0] + "_final_psnr_vs_iterations.pdf"
+    fig_lambda.savefig(path_name, bbox_inches="tight")
+    
+def plot_final_cvg_vs_iterations(path_results):
+    
+    with open(path_results, "rb") as f:
+        list_results = pickle.load(f)
+    
+    names = [key for key in list_results[0].keys() if key.startswith("AD") or key.startswith("SD")]
+    base_names = list(set([name.rsplit("_", 1)[0] for name in names]))
+    base_names.sort()
+    base_names.sort(key=lambda x: (x.split("_")[0],int(x.split("_")[1][:-1])))
+    
+    n_rep_list = list(set([int(name.split("_")[-1][:-1]) for name in names]))
+    n_rep_list.sort()
+    n_rep_list.remove(1)
+    
+    n_plots = len(base_names)
+    n_img = len(list_results)
+
+    fig_lambda, axs_lambda = plt.subplots(
+        n_plots, n_img, figsize=(4*n_img, 3*(n_plots))
+    )
+
+    if (n_plots == 1) and (n_img == 1):
+        axs_lambda = np.array([[axs_lambda]])
+    elif n_plots == 1:
+        axs_lambda = axs_lambda[np.newaxis, :]
+    elif n_img == 1:
+        axs_lambda = axs_lambda[:, np.newaxis]
+
+    for i, results in enumerate(list_results):
+        
+        x_observed = results["observation"].transpose(1, 2, 0).clip(0, 1)
+        img = results["truth"].transpose(1, 2, 0).clip(0, 1)
+        
+        for k, base_name in enumerate(base_names):
+
+            for rep in [1] + n_rep_list:
+                
+                name = f"{base_name}_{rep}R"
+                res = results[name]
+                axs_lambda[k, i].loglog(range(1, len(res['cvg_final_fista'])+1), res['cvg_final_fista'], label=rep)
+            
+            axs_lambda[k, i].set_title(f"{base_name}")
+            axs_lambda[k, i].grid(True)
+            axs_lambda[k, i].legend(title="# iterations", fontsize=8, title_fontsize=8)
+            axs_lambda[k, i].set_xlabel(f"PnP iterations")
+
+    for ax in axs_lambda[:, 0]:
+        ax.set_ylabel(r"$||x_{k-1} - x_{k}||$")
+    
+    fig_lambda.tight_layout(rect=[0, 0, 1, 0.9])
+    path_name = path_results.split(".")[0] + "_final_cvg_vs_iterations.pdf"
+    fig_lambda.savefig(path_name, bbox_inches="tight")
+    
+def plot_final_error_vs_iterations(path_results):
+    
+    with open(path_results, "rb") as f:
+        list_results = pickle.load(f)
+    
+    names = [key for key in list_results[0].keys() if key.startswith("AD") or key.startswith("SD")]
+    base_names = list(set([name.rsplit("_", 1)[0] for name in names]))
+    base_names.sort()
+    base_names.sort(key=lambda x: (x.split("_")[0],int(x.split("_")[1][:-1])))
+    
+    n_rep_list = list(set([int(name.split("_")[-1][:-1]) for name in names]))
+    n_rep_list.sort()
+    n_rep_list.remove(1)
+    
+    n_plots = len(base_names)
+    n_img = len(list_results)
+
+    fig_lambda, axs_lambda = plt.subplots(
+        n_plots, n_img, figsize=(4*n_img, 3*(n_plots))
+    )
+
+    if (n_plots == 1) and (n_img == 1):
+        axs_lambda = np.array([[axs_lambda]])
+    elif n_plots == 1:
+        axs_lambda = axs_lambda[np.newaxis, :]
+    elif n_img == 1:
+        axs_lambda = axs_lambda[:, np.newaxis]
+
+    for i, results in enumerate(list_results):
+        
+        x_observed = results["observation"].transpose(1, 2, 0).clip(0, 1)
+        img = results["truth"].transpose(1, 2, 0).clip(0, 1)
+        
+        for k, base_name in enumerate(base_names):
+
+            for rep in [1] + n_rep_list:
+                
+                name = f"{base_name}_{rep}R"
+                res = results[name]
+                axs_lambda[k, i].loglog(range(1, len(res['error_final_fista'])+1), res['error_final_fista'], label=rep)
+            
+            axs_lambda[k, i].set_title(f"{base_name}")
+            axs_lambda[k, i].grid(True)
+            axs_lambda[k, i].legend(title="# iterations", fontsize=8, title_fontsize=8)
+            axs_lambda[k, i].set_xlabel(f"PnP iterations")
+
+    for ax in axs_lambda[:, 0]:
+        ax.set_ylabel("Functional error")
+    
+    fig_lambda.tight_layout(rect=[0, 0, 1, 0.9])
+    path_name = path_results.split(".")[0] + "_final_error_vs_iterations.pdf"
+    fig_lambda.savefig(path_name, bbox_inches="tight")
+    
+def plot_final_psnr_vs_runtime(path_results):
+    
+    with open(path_results, "rb") as f:
+        list_results = pickle.load(f)
+    
+    names = [key for key in list_results[0].keys() if key.startswith("AD") or key.startswith("SD")]
+    base_names = list(set([name.rsplit("_", 1)[0] for name in names]))
+    base_names.sort()
+    base_names.sort(key=lambda x: (x.split("_")[0],int(x.split("_")[1][:-1])))
+    
+    n_rep_list = list(set([int(name.split("_")[-1][:-1]) for name in names]))
+    n_rep_list.sort()
+    n_rep_list.remove(1)
+    
+    n_plots = len(base_names)
+    n_img = len(list_results)
+
+    fig_lambda, axs_lambda = plt.subplots(
+        n_plots, n_img, figsize=(4*n_img, 3*(n_plots))
+    )
+
+    if (n_plots == 1) and (n_img == 1):
+        axs_lambda = np.array([[axs_lambda]])
+    elif n_plots == 1:
+        axs_lambda = axs_lambda[np.newaxis, :]
+    elif n_img == 1:
+        axs_lambda = axs_lambda[:, np.newaxis]
+
+    for i, results in enumerate(list_results):
+        
+        x_observed = results["observation"].transpose(1, 2, 0).clip(0, 1)
+        img = results["truth"].transpose(1, 2, 0).clip(0, 1)
+        psnr = peak_signal_noise_ratio(img, x_observed.astype(np.float32))
+        
+        for k, base_name in enumerate(base_names):
+
+            for rep in [1] + n_rep_list:
+                
+                name = f"{base_name}_{rep}R"
+                res = results[name]
+                axs_lambda[k, i].semilogx(res['runtime_final_fista'], res['psnr_final_fista'], label=rep)
+            
+            axs_lambda[k, i].set_title(f"{base_name}")
+            axs_lambda[k, i].grid(True)
+            axs_lambda[k, i].axhline(y=psnr, linestyle='--', alpha=0.5, color="grey")
+            axs_lambda[k, i].legend(title="# iterations", fontsize=8, title_fontsize=8)
+            axs_lambda[k, i].set_xlabel(f"runtime (s)")
+
+    for ax in axs_lambda[:, 0]:
+        ax.set_ylabel("PSNR")
+    
+    fig_lambda.tight_layout(rect=[0, 0, 1, 0.9])
+    path_name = path_results.split(".")[0] + "_final_psnr_vs_runtime.pdf"
+    fig_lambda.savefig(path_name, bbox_inches="tight")
+    
+def plot_final_cvg_vs_runtime(path_results):
+    
+    with open(path_results, "rb") as f:
+        list_results = pickle.load(f)
+    
+    names = [key for key in list_results[0].keys() if key.startswith("AD") or key.startswith("SD")]
+    base_names = list(set([name.rsplit("_", 1)[0] for name in names]))
+    base_names.sort()
+    base_names.sort(key=lambda x: (x.split("_")[0],int(x.split("_")[1][:-1])))
+    
+    n_rep_list = list(set([int(name.split("_")[-1][:-1]) for name in names]))
+    n_rep_list.sort()
+    n_rep_list.remove(1)
+    
+    n_plots = len(base_names)
+    n_img = len(list_results)
+
+    fig_lambda, axs_lambda = plt.subplots(
+        n_plots, n_img, figsize=(4*n_img, 3*(n_plots))
+    )
+
+    if (n_plots == 1) and (n_img == 1):
+        axs_lambda = np.array([[axs_lambda]])
+    elif n_plots == 1:
+        axs_lambda = axs_lambda[np.newaxis, :]
+    elif n_img == 1:
+        axs_lambda = axs_lambda[:, np.newaxis]
+
+    for i, results in enumerate(list_results):
+        
+        x_observed = results["observation"].transpose(1, 2, 0).clip(0, 1)
+        img = results["truth"].transpose(1, 2, 0).clip(0, 1)
+        
+        for k, base_name in enumerate(base_names):
+
+            for rep in [1] + n_rep_list:
+                
+                name = f"{base_name}_{rep}R"
+                res = results[name]
+                axs_lambda[k, i].loglog(res['runtime_final_fista'], res['cvg_final_fista'], label=rep)
+            
+            axs_lambda[k, i].set_title(f"{base_name}")
+            axs_lambda[k, i].grid(True)
+            axs_lambda[k, i].legend(title="# iterations", fontsize=8, title_fontsize=8)
+            axs_lambda[k, i].set_xlabel(f"runtime (s)")
+
+    for ax in axs_lambda[:, 0]:
+        ax.set_ylabel(r"$||x_{k-1} - x_{k}||$")
+    
+    fig_lambda.tight_layout(rect=[0, 0, 1, 0.9])
+    path_name = path_results.split(".")[0] + "_final_cvg_vs_runtime.pdf"
+    fig_lambda.savefig(path_name, bbox_inches="tight")
+
+def plot_final_error_vs_runtime(path_results):
+    
+    with open(path_results, "rb") as f:
+        list_results = pickle.load(f)
+    
+    names = [key for key in list_results[0].keys() if key.startswith("AD") or key.startswith("SD")]
+    base_names = list(set([name.rsplit("_", 1)[0] for name in names]))
+    base_names.sort()
+    base_names.sort(key=lambda x: (x.split("_")[0],int(x.split("_")[1][:-1])))
+    
+    n_rep_list = list(set([int(name.split("_")[-1][:-1]) for name in names]))
+    n_rep_list.sort()
+    n_rep_list.remove(1)
+    
+    n_plots = len(base_names)
+    n_img = len(list_results)
+
+    fig_lambda, axs_lambda = plt.subplots(
+        n_plots, n_img, figsize=(4*n_img, 3*(n_plots))
+    )
+
+    if (n_plots == 1) and (n_img == 1):
+        axs_lambda = np.array([[axs_lambda]])
+    elif n_plots == 1:
+        axs_lambda = axs_lambda[np.newaxis, :]
+    elif n_img == 1:
+        axs_lambda = axs_lambda[:, np.newaxis]
+
+    for i, results in enumerate(list_results):
+        
+        x_observed = results["observation"].transpose(1, 2, 0).clip(0, 1)
+        img = results["truth"].transpose(1, 2, 0).clip(0, 1)
+        
+        for k, base_name in enumerate(base_names):
+
+            for rep in [1] + n_rep_list:
+                
+                name = f"{base_name}_{rep}R"
+                res = results[name]
+                axs_lambda[k, i].loglog(res['runtime_final_fista'], res['error_final_fista'], label=rep)
+            
+            axs_lambda[k, i].set_title(f"{base_name}")
+            axs_lambda[k, i].grid(True)
+            axs_lambda[k, i].legend(title="# iterations", fontsize=8, title_fontsize=8)
+            axs_lambda[k, i].set_xlabel(f"runtime (s)")
+
+    for ax in axs_lambda[:, 0]:
+        ax.set_ylabel("Functional error")
+    
+    fig_lambda.tight_layout(rect=[0, 0, 1, 0.9])
+    path_name = path_results.split(".")[0] + "_final_error_vs_runtime.pdf"
+    fig_lambda.savefig(path_name, bbox_inches="tight")
+    
+def plot_final_error_vs_runtime_ista_fista(path_results):
+    
+    with open(path_results, "rb") as f:
+        list_results = pickle.load(f)
+    
+    names = [key for key in list_results[0].keys() if key.startswith("AD") or key.startswith("SD")]
+    base_names = list(set([name.rsplit("_", 1)[0] for name in names]))
+    base_names.sort()
+    base_names.sort(key=lambda x: (x.split("_")[0],int(x.split("_")[1][:-1])))
+    
+    n_rep_list = list(set([int(name.split("_")[-1][:-1]) for name in names]))
+    n_rep_list.sort()
+    n_rep_list.remove(1)
+    colors = plt.cm.Set2.colors[:len(n_rep_list)+1]
+    
+    n_plots = len(base_names)
+    n_img = len(list_results)
+
+    fig_lambda, axs_lambda = plt.subplots(
+        n_plots, n_img, sharey=True, figsize=(4*n_img, 3*(n_plots))
+    )
+
+    if (n_plots == 1) and (n_img == 1):
+        axs_lambda = np.array([[axs_lambda]])
+    elif n_plots == 1:
+        axs_lambda = axs_lambda[np.newaxis, :]
+    elif n_img == 1:
+        axs_lambda = axs_lambda[:, np.newaxis]
+
+    for i, results in enumerate(list_results):
+        
+        x_observed = results["observation"].transpose(1, 2, 0).clip(0, 1)
+        img = results["truth"].transpose(1, 2, 0).clip(0, 1)
+        psnr = peak_signal_noise_ratio(img, x_observed.astype(np.float32))
+        
+        for k, base_name in enumerate(base_names):
+
+            for j, rep in enumerate([1] + n_rep_list):
+                name = f"{base_name}_{rep}R"
+                res = results[name]
+                axs_lambda[k, i].loglog(res['runtime_final_ista'], res['error_final_ista'], label=f"{rep}", color=colors[j])
+                axs_lambda[k, i].loglog(res['runtime_final_fista'], res['error_final_fista'], label='_nolegend_', color=colors[j], linestyle='--')
+            
+            axs_lambda[k, i].set_title(f"{base_name}")
+            axs_lambda[k, i].grid(True)
+            axs_lambda[k, i].legend(title="# iterations", fontsize=8, title_fontsize=8)
+            axs_lambda[k, i].set_xlabel(f"runtime (s)")
+
+    for ax in axs_lambda[:, 0]:
+        ax.set_ylabel("Functional error")
+    
+    fig_lambda.tight_layout(rect=[0, 0, 1, 0.9])
+    path_name = path_results.split(".")[0] + "_final_error_vs_runtime_ista_fista.pdf"
+    fig_lambda.savefig(path_name, bbox_inches="tight")
+
+def plot_final_psnr_vs_runtime_ista_fista(path_results):
+    
+    with open(path_results, "rb") as f:
+        list_results = pickle.load(f)
+    
+    names = [key for key in list_results[0].keys() if key.startswith("AD") or key.startswith("SD")]
+    base_names = list(set([name.rsplit("_", 1)[0] for name in names]))
+    base_names.sort()
+    base_names.sort(key=lambda x: (x.split("_")[0],int(x.split("_")[1][:-1])))
+    
+    n_rep_list = list(set([int(name.split("_")[-1][:-1]) for name in names]))
+    n_rep_list.sort()
+    n_rep_list.remove(1)
+    colors = plt.cm.Set2.colors[:len(n_rep_list)+1]
+    
+    n_plots = len(base_names)
+    n_img = len(list_results)
+
+    fig_lambda, axs_lambda = plt.subplots(
+        n_plots, n_img, sharey=True, figsize=(4*n_img, 3*(n_plots))
+    )
+
+    if (n_plots == 1) and (n_img == 1):
+        axs_lambda = np.array([[axs_lambda]])
+    elif n_plots == 1:
+        axs_lambda = axs_lambda[np.newaxis, :]
+    elif n_img == 1:
+        axs_lambda = axs_lambda[:, np.newaxis]
+
+    for i, results in enumerate(list_results):
+        
+        x_observed = results["observation"].transpose(1, 2, 0).clip(0, 1)
+        img = results["truth"].transpose(1, 2, 0).clip(0, 1)
+        psnr = peak_signal_noise_ratio(img, x_observed.astype(np.float32))
+        
+        for k, base_name in enumerate(base_names):
+
+            for j, rep in enumerate([1] + n_rep_list):
+                name = f"{base_name}_{rep}R"
+                res = results[name]
+                axs_lambda[k, i].semilogx(res['runtime_final_ista'], res['psnr_final_ista'], label=f"{rep}", color=colors[j])
+                axs_lambda[k, i].semilogx(res['runtime_final_fista'], res['psnr_final_fista'], label="_nolegend_", color=colors[j], linestyle='--')
+            
+            axs_lambda[k, i].set_title(f"{base_name}")
+            axs_lambda[k, i].grid(True)
+            axs_lambda[k, i].axhline(y=psnr, linestyle='--', alpha=0.5, color="grey")
+            axs_lambda[k, i].legend(title="# iterations", fontsize=8, title_fontsize=8)
+            axs_lambda[k, i].set_xlabel(f"runtime (s)")
 
     for ax in axs_lambda[:, 0]:
         ax.set_ylabel("PSNR (dB)")
+    
     fig_lambda.tight_layout(rect=[0, 0, 1, 0.9])
-    path_name = path_results.split(".")[0] + "_best_psnr_vs_components.pdf"
+    path_name = path_results.split(".")[0] + "_final_psnr_vs_runtime_ista_fista.pdf"
     fig_lambda.savefig(path_name, bbox_inches="tight")
 
 def main():
@@ -332,7 +701,7 @@ def main():
     parser = argparse.ArgumentParser(description="Plot results from a given path.")
     parser.add_argument("-config", type=str, help="Path to the config.yaml file.")
     parser.add_argument("-path_results", type=str, help="Path to the results file.")
-    parser.add_argument("--max_rows", type=int, default=None, help="Maximum number of rows to plot for inner lambda plots.")
+    parser.add_argument("-max_rows", type=int, help="Maximum number of rows to plot for inner lambda plots.")
     args = parser.parse_args()
 
     # Load path_results from config.yaml or command-line argument
@@ -340,6 +709,7 @@ def main():
         with open(args.config, "r") as f:
             config = yaml.safe_load(f)
             path_results = config.get("path_results")
+            max_rows = config.get("max_rows", None)
     elif args.path_results:
         path_results = args.path_results
     else:
@@ -352,11 +722,27 @@ def main():
     print("Plotting error vs lambda...")
     plot_error_vs_lambda(path_results)
     print("Plotting PSNR vs inner lambda...")
-    plot_psnr_vs_inner_lambda(path_results, max_rows=args.max_rows)
+    plot_psnr_vs_inner_lambda(path_results, max_rows=max_rows)
     print("Plotting error vs inner lambda...")
-    plot_error_vs_inner_lambda(path_results, max_rows=args.max_rows)
+    plot_error_vs_inner_lambda(path_results, max_rows=max_rows)
     print("Plotting best PSNR vs components...")
     plot_best_psnr_vs_components(path_results)
+    print("Plotting final PSNR vs iterations...")
+    plot_final_psnr_vs_iterations(path_results)
+    print("Plotting final convergence vs iterations...")
+    plot_final_cvg_vs_iterations(path_results)
+    print("Plotting final error vs iterations...")
+    plot_final_error_vs_iterations(path_results)
+    print("Plotting final PSNR vs runtime...")
+    plot_final_psnr_vs_runtime(path_results)
+    print("Plotting final convergence vs runtime...")
+    plot_final_cvg_vs_runtime(path_results)
+    print("Plotting final error vs runtime...")
+    plot_final_error_vs_runtime(path_results)
+    print("Plotting final PSNR vs runtime (ISTA vs FISTA)...")
+    plot_final_psnr_vs_runtime_ista_fista(path_results)
+    print("Plotting final error vs runtime (ISTA vs FISTA)...")
+    plot_final_error_vs_runtime_ista_fista(path_results)
     print(f"All plots generated in {time() - T_START:.2f} seconds.")
 
 if __name__ == "__main__":
