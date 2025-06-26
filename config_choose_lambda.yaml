@@ -1,0 +1,14 @@
+std_noise_train: 0.05
+std_noise: 0.05
+kernel_size: 16
+components_list: [50]
+layers_list: [1]
+n_rep_list: [10]
+denoiser_type_list: ["SD"]
+pth_kernel: "blur_models/blur_3.mat"
+img_list: [0]
+n_lambda: 50
+n_iter_per_lambda: 5000
+eps_stop: null
+warm_restart: true
+save_path: "convergence/SD_16K_50C_1L/results_optimal_lambda.pkl"

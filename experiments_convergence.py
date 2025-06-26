@@ -16,6 +16,7 @@ if __name__ == "__main__":
 
     std_noise_train = config.get("std_noise_train", 0.05)
     std_noise = config.get("std_noise", 0.05)
+    kernel_size = config.get("kernel_size", 5)
     components_list = config.get("components_list", [10])
     layers_list = config.get("layers_list", [1])
     n_rep_list = config.get("n_rep_list", [1, 2, 3, 4, 5, 10, 20, 100, 1000])
@@ -26,9 +27,11 @@ if __name__ == "__main__":
     lambdas = [float(x) for x in config.get("lambdas", [1e-2, 1e-3])]
     iter_final = config.get("iter_final", 1000)
     save_path = config.get("save_path", "convergence/SD_10C_1L/results.pkl")
+    
+    print(f"Will save in {save_path}")
 
     params_model = {
-            "kernel_size": 5,
+            "kernel_size": kernel_size,
             "lmbd": 1e-4,
             "color": COLOR,
             "device": DEVICE,
@@ -63,10 +66,10 @@ if __name__ == "__main__":
                 
                 # ----- #REPEAT = #LAYERS -----
                 if denoiser_type == "SD":
-                    base_name = f"SD_{components}C_{layers}L"
+                    base_name = f"SD_{kernel_size}K_{components}C_{layers}L"
                     model_type = "synthesis"
                 elif denoiser_type == "AD":
-                    base_name = f"AD_{components}C_{layers}L"
+                    base_name = f"AD_{kernel_size}K_{components}C_{layers}L"
                     model_type = "analysis"
                 
                 name = f"{base_name}_{layers}R"
@@ -107,6 +110,7 @@ if __name__ == "__main__":
                     DENOISERS[f"{base_name}_{n_rep}R"]["n_layers"] = n_rep
 
     print(f"\nSuccessfully prepared {len(DENOISERS.keys())} denoisers in {time.time() - T_START:.2f} seconds.")
+    print(DENOISERS.keys())
 
     dataloader = create_dataloader(
         DATA_PATH,
@@ -237,10 +241,8 @@ if __name__ == "__main__":
                     best_psnr_ista = psnr_final_ista[t]
 
             results[(denoiser_name, best_lambda)] = {
-                "best_x": best_x,
-                "best_x_ista": best_x_ista,
-                "best_dual": best_dual,
-                "best_dual_ista": best_dual_ista,
+                # "best_x": best_x,
+                # "best_dual": best_dual,
                 "error_final": error_final,
                 "error_final_ista": error_final_ista,
                 "psnr_final": psnr_final,
@@ -295,7 +297,7 @@ if __name__ == "__main__":
                 best_psnr = psnr_final[t]
 
         results[("DRUNet", best_lambda)] = {
-            "best_x": best_x,
+            # "best_x": best_x,
             "error_final": error_final,
             "psnr_final": psnr_final,
             "runtime_final": runtime_final,
