@@ -27,6 +27,8 @@ if __name__ == "__main__":
     n_iter_per_lambda = config.get("n_iter_per_lambda", 200)
     eps_stop = float(config.get("eps_stop", 1e-6)) if config.get("eps_stop") is not None else None
     warm_restart = config.get("warm_restart", True)
+    iter_grad = config.get("iter_grad", 500)
+    lambda_unbiased = float(config.get("lambda_unbiased", 1e-3))
     save_path = config.get("save_path", "convergence/SD_10C_1L/results_optimal_lambda.pkl")
     
     print(f"Will save in {save_path}")
@@ -145,6 +147,8 @@ if __name__ == "__main__":
     net = denoiser["net"]
     model = "unrolled"
     model_type = denoiser["model"]
+    parameter = net.parameter
+    step_size = gamma * 1 / net.compute_lipschitz()
 
     lambda_max = lambda_max_synthesis(x_observed, denoiser["net"], Phit)
     lambda_list = np.logspace(np.log10(1*lambda_max), np.log10(1e-5 * lambda_max), n_lambda)
@@ -166,7 +170,10 @@ if __name__ == "__main__":
     best_psnr = 0
     best_error = 0
     best_lambda = 0
-
+    best_psnr_unbiased = 0
+    best_lambda_unbiased = 0
+    best_x_unbiased = x_n.copy()
+    
     cvg = [1e10] * n_lambda*n_iter_per_lambda
     psnr = [0] * n_lambda
     error = [0] * n_lambda
@@ -174,6 +181,8 @@ if __name__ == "__main__":
     error_inner = [0] * n_lambda*n_iter_per_lambda
     runtime = [0] * n_lambda*n_iter_per_lambda
     stops = [0] * (n_lambda+1)
+    psnr_unbiased_inner = [[0 for _ in range(iter_grad)] for _ in range(n_lambda)]
+    psnr_unbiased = [0] * n_lambda
 
     current_dual = None
     current_dual_fast = None
@@ -237,7 +246,39 @@ if __name__ == "__main__":
             if error[k] < best_error:
                 best_error = error[k]
                 best_x_error = x_n.copy()
+        
+        # Unbiased projection
+        support_z = current_dual != 0
+        support_z = torch.tensor(support_z, dtype=torch.float, device=DEVICE)
+        print(f"Proportion of zero elements in the dual: {np.mean(current_dual[0] == 0):.2%}")
 
+        z_n_proj_fast = current_dual.copy()
+        z_n_proj_fast = torch.tensor(z_n_proj_fast, device=DEVICE, dtype=torch.float)
+        w_n = z_n_proj_fast.clone()
+        psnr_unbiased_proj_fast = []
+        
+        for t in tqdm(range(iter_grad)):
+            old_z_n = z_n_proj_fast.clone()
+            grad = net.convt(w_n, net.parameter).detach().cpu().numpy()
+            grad = Phi_channels(grad, Phi) - x_observed
+            #error_unbiased_proj_fast.append(np.linalg.norm(grad) + lambda_unbiased
+            grad = Phi_channels(grad, Phit)
+            grad = torch.tensor(grad, device=DEVICE, dtype=torch.float)
+            grad = net.conv(grad, net.parameter)
+            w_n -= step_size * grad
+            z_n_proj_fast = w_n * support_z * (1/(1+lambda_unbiased))
+            x_unbiased_proj_fast = net.convt(z_n_proj_fast, net.parameter).detach().cpu().numpy()[0]
+            alpha_t = t / (t + 4)
+            w_n = z_n_proj_fast + alpha_t * (z_n_proj_fast - old_z_n)
+            psnr_unbiased_inner[k][t] = peak_signal_noise_ratio(x_truth, x_unbiased_proj_fast)
+        
+        psnr_unbiased[k] = psnr_unbiased_inner[k][-1]
+        if psnr_unbiased[k] > best_psnr_unbiased:
+            best_psnr_unbiased = psnr_unbiased[k]
+            best_lambda_unbiased = lambda_list[k]
+            best_x_unbiased = x_unbiased_proj_fast.copy()
+        
+              
     results["cvg"] = cvg
     results["psnr"] = psnr
     results["error"] = error
@@ -252,6 +293,12 @@ if __name__ == "__main__":
     results["best_lambda"] = best_lambda
     results["best_current_dual"] = best_current_dual
     results["best_current_dual_fast"] = best_current_dual_fast
+    results["psnr_unbiased"] = psnr_unbiased
+    results["psnr_unbiased_inner"] = psnr_unbiased_inner
+    results["best_lambda_unbiased"] = best_lambda_unbiased
+    results["best_x_unbiased"] = best_x_unbiased
+    results["best_psnr_unbiased"] = best_psnr_unbiased
+    #results["error_unbiased_proj_fast"] = error_unbiased_proj_fast
 
 
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
