@@ -149,21 +149,21 @@ dmypy.json
 !images_inpainting/*.pkl
 
 # To ignore
-# xp_warm_restart.ipynb
-# plots_frugality.py
-# plots_frugality.ipynb
-# lambda_max.ipynb
-# experiments_old.ipynb
-# config_plots.yaml
-# config_experiments.yaml
+xp_warm_restart.ipynb
+plots_frugality.py
+plots_frugality.ipynb
+lambda_max.ipynb
+experiments_old.ipynb
+config_plots.yaml
+config_experiments.yaml
 
 # Folders to ignore
-# /experiments
-# /experiments_old
+/experiments
+/experiments_old
 
 # Plots to ignore
-# **/REPORT_*
+**/REPORT_*
 
 # To ignore from original paper
-# pnp_comparisons.py
-# convergence_algorithm.py
+pnp_comparisons.py
+convergence_algorithm.py
