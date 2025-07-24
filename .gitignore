@@ -142,6 +142,11 @@ dmypy.json
 # Heavy files
 *.pkl
 /BSDS500
+# Except those in specific folders
+!convergence_deblurring/*.pkl
+!convergence_inpainting/*.pkl
+!images_deblurring/*.pkl
+!images_inpainting/*.pkl
 
 # To ignore
 # xp_warm_restart.ipynb
