@@ -6,7 +6,7 @@ import numpy as np
 from skimage.metrics import peak_signal_noise_ratio
 
 
-path_results = "convergence_inpainting/SD_5K_50C_1L/results.pkl"
+path_results = "convergence_inpainting/SD_16K_50C_1L/results.pkl"
 
 with open(path_results, "rb") as f:
     list_results = pickle.load(f)

@@ -1,12 +1,12 @@
 std_noise_train: 0.05
 std_noise: 0.05
-kernel_size: 5
-components_list: [10] #[2, 10, 50] #[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20, 50, 100]
+kernel_size: 16
+components_list: [50] #[2, 10, 50] #[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20, 50, 100]
 layers_list: [1] #[1, 20]
-n_rep_list: [1, 10, 50, 100, 500] #, 500] #, 500] #[1, 20, 50, 100]
+n_rep_list: [1, 10, 50, 100] #500] #, 500] #, 500] #[1, 20, 50, 100]
 denoiser_type_list: ["SD"] #, "SD"]
 prop_mask: 0.7
 img_list: [24]
-lambdas: [1e-1, 1e-2, 1e-3] #, 1e-3] #, 1e-5, 1e-6]
+lambdas: [1e-1, 1e-3] #, 1e-3] #, 1e-5, 1e-6]
 iter_final: 1000
-save_path: "convergence_inpainting/SD_5K_10C_1L/results.pkl"
+save_path: "convergence_inpainting/SD_16K_50C_1L/results.pkl"

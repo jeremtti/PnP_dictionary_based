@@ -1,6 +1,6 @@
 std_noise_train: 0.05
 std_noise: 0.05
-kernel_size: 5
+kernel_size: 16
 components_list: [50]
 layers_list: [1]
 n_rep_list: [10]
@@ -13,4 +13,4 @@ eps_stop: null
 warm_restart: true
 iter_grad: 1
 lambda_unbiased: 1e-3
-save_path: "convergence_inpainting/SD_5K_50C_1L/results_optimal_lambda.pkl"
+save_path: "convergence_inpainting/SD_16K_50C_1L/results_optimal_lambda.pkl"

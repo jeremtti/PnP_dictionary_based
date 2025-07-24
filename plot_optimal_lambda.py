@@ -4,7 +4,7 @@ import matplotlib.cm as cm
 import numpy as np
 from skimage.metrics import peak_signal_noise_ratio
 
-path_results = "convergence_inpainting/SD_5K_50C_1L/results_optimal_lambda.pkl"
+path_results = "convergence_inpainting/SD_16K_50C_1L/results_optimal_lambda.pkl"
 unbiased = False
 
 with open(path_results, "rb") as f:
