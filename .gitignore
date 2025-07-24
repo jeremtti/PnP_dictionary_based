@@ -139,6 +139,26 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-
+# Heavy files
 *.pkl
 /BSDS500
+
+# To ignore
+# xp_warm_restart.ipynb
+# plots_frugality.py
+# plots_frugality.ipynb
+# lambda_max.ipynb
+# experiments_old.ipynb
+# config_plots.yaml
+# config_experiments.yaml
+
+# Folders to ignore
+# /experiments
+# /experiments_old
+
+# Plots to ignore
+# **/REPORT_*
+
+# To ignore from original paper
+# pnp_comparisons.py
+# convergence_algorithm.py

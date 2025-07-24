@@ -1,0 +1,16 @@
+std_noise_train: 0.05
+std_noise: 0.05
+kernel_size: 16
+components_list: [50]
+layers_list: [1]
+n_rep_list: [10]
+denoiser_type_list: ["SD"]
+prop_mask: 0.7
+img_list: [24]
+n_lambda: 50
+n_iter_per_lambda: 1000
+eps_stop: null
+warm_restart: true
+iter_grad: 1
+lambda_unbiased: 1e-3
+save_path: "convergence_inpainting/SD_16K_50C_1L/results_optimal_lambda.pkl"
