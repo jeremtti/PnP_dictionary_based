@@ -7,7 +7,7 @@ The experiments have two objectives:
 2. Obtain optimal reconstruction quality
 
 All experiments are conducted on a task of **deblurring** and a task of **inpainting**.
-In the following, we denote  task $\in$ {deblurring, inpainting}.
+In the following, we denote `task $\in$ {deblurring, inpainting}`.
 
 Useful functions are provided in the scripts `experiments_{task}.py`
 
