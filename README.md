@@ -27,7 +27,7 @@ Results are saved in the folders `/convergence_{task}`
 
 ## II. Reconstruction Quality
 
-The scripts `optimal_lambda_{task}.py` and their configurations `config_optimal_lambda_{task}.yaml` select the best regularization parameter $\lambda$ using a warm-restart strategy, decreasing from `\lambda_{max}` to `0`.
+The scripts `optimal_lambda_{task}.py` and their configurations `config_optimal_lambda_{task}.yaml` select the best regularization parameter $\lambda$ using a warm-restart strategy, decreasing from $\lambda_{max}$ to $0$.
 
 The plots are generated with `plot_optimal_lambda.py`
 
