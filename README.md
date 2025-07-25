@@ -1,24 +1,83 @@
-# Forward-backward Plug-and-Play with dictionary-based denoisers
+# Extended Experiments and Fast Algorithm for PnP with Synthesis-Based Denoiser
 
-This repo contains the scripts to reproduce the experiments of the "[Analysis and Synthesis Denoisers for Forward-Backward Plug-and-Play Algorithms](https://hal.science/hal-04786802)",  Matthieu Kowalski, Benoît Malézieux, Thomas Moreau, Audrey Repetti, preprint 2024.
+This repository extends [dictionary-based_denoisers_FBPnP](https://github.com/tomMoral/dictionary-based_denoisers_FBPnP), the companion repository for the paper:
 
-This paper aims to study the properties of a PnP scheme in which the denoiser is dictionary-based, either using a synthesis or an analysis formulation.
+**Analysis and Synthesis Denoisers for Forward-Backward Plug-and-Play Algorithms**  
+[hal.science/hal-04786802](https://hal.science/hal-04786802)
 
-### Install
+---
 
-This repo's dependencies can be installed using `pip install -r requirements`. 
-The experiments are performed using the `BSD500` dataset, which can be retrieved using the `create_dataset.py` script.
+## Installation
 
-### Experiments
+To install the required dependencies, install the packages listed in `requirements.txt`.
 
-The paper's experiments can be reproduced using two scripts:
+To download the BSDS500 dataset needed for experiments, run the script `create_dataset.py`.
 
-- `convergence_algorithm.py`: this script runs the computations necessary to produce Figures 1 and 2.
+---
 
-- `pnp_comparisons.py`: this script runs the comparison between DRUNet, and various versions of SD/AD unrolling in PnP. It compares the runtime, the convergence profile, and the PSNR for varying images and regularization parameters. It also displays some reconstruction examples.
+## Overview of Experiments
 
-Example of reconstruction provides the following figures:
-![image](https://github.com/user-attachments/assets/ba090eab-7304-4cb1-8923-846252ee1b3b)
-![image](https://github.com/user-attachments/assets/07a01385-4c2d-4671-ab30-48913946f733)
+All experiments are conducted on two tasks:
+- **Deblurring**
+- **Inpainting**
 
+Each task (denoted `task ∈ {deblurring, inpainting}`) has two objectives:
+1. **Study the convergence behavior of the algorithm**
+2. **Obtain optimal reconstruction quality**
 
+Useful functions are provided in the script:  
+`experiments_{task}.py`
+
+---
+
+## I. Convergence Study
+
+Goal: Analyze how the algorithm behaves for various values of:
+- Inner iterations `L`
+- Regularization parameter `λ`
+
+Also includes a comparison between the **original** and **fast** versions of the algorithm.
+
+Main script:  
+`convergence_{task}.py`
+
+Configuration file:  
+`config_convergence_{task}.yaml`
+
+Results are saved in the folder:  
+`/convergence_{task}`
+
+To generate plots of the results, use:  
+`plot_convergence.py`  
+(Note: `plot_convergence.py` réalise les plots correspondants.)
+
+---
+
+## II. Reconstruction Quality
+
+### Optimal λ Search
+
+This experiment selects the best regularization parameter `λ` using a warm-restart strategy, decreasing from `λ_max` to `0`.
+
+Main script:  
+`optimal_lambda_{task}.py`
+
+Configuration file:  
+`config_optimal_lambda_{task}.yaml`
+
+To generate plots, use:  
+`plot_optimal_lambda.py`
+
+---
+
+### Debiasing Analysis
+
+This experiment studies:
+- The effect of debiasing as a post-processing step
+- Comparisons between **$l_1$-based** and **$l_2$-based** reconstructions
+
+Notebook:  
+`debiaising_{task}.ipynb`
+
+Results are saved in the folder:  
+`/images_{task}`
