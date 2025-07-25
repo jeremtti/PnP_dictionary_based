@@ -20,33 +20,26 @@ The experiments have two objectives:
 All experiments are conducted on a task of **deblurring** and a task of **inpainting**.
 In the following, we denote  task \in {deblurring, inpainting}.
 
-Useful functions are provided in the script:  
-`experiments_{task}.py`
+Useful functions are provided in the scripts `experiments_{task}.py`
 
 ---
 
 ## I. Convergence Study
 
-Goal: Analyze how the algorithm behaves for various values of:
-- Inner iterations `L`
-- Regularization parameter `λ`
-
-Also includes a comparison between the **original** and **fast** versions of the algorithm.
-
-The script `convergence_{task}.py` and its configuration `config_convergence_{task}.yaml` analyze the convergence of the algorithm for various values of inner iterations $L$ and regularization parameters $\lambda$ and compare the original and the fast versions of the algorithm.
+The scripts `convergence_{task}.py` and their configurations `config_convergence_{task}.yaml` analyze the convergence of the algorithm for various values of inner iterations $L$ and regularization parameters $\lambda$ and compare the original and the fast versions of the algorithm.
 
 The plots are generated with `plot_convergence.py`.
 
-Results are saved in the folder `/convergence_{task}`
+Results are saved in the folders `/convergence_{task}`
 
 ---
 
 ## II. Reconstruction Quality
 
-The script `optimal_lambda_{task}.py` and its configuration `config_optimal_lambda_{task}.yaml` select the best regularization parameter $\lambda$ using a warm-restart strategy, decreasing from `λ_max` to `0`.
+The scripts `optimal_lambda_{task}.py` and their configurations `config_optimal_lambda_{task}.yaml` select the best regularization parameter $\lambda$ using a warm-restart strategy, decreasing from `λ_max` to `0`.
 
 The plots are generated with `plot_optimal_lambda.py`
 
-The notebooks `debiaising_{task}.ipynb` show the effect of debiaising as a post-processing step and compares the $l_1$-based and $l_2$-based reconstructions.
+The notebooks `debiaising_{task}.ipynb` show the effect of debiaising as a post-processing step and compare the $l_1$-based and $l_2$-based reconstructions.
 
-Results are saved in the folder `/images_{task}`
+Results are saved in the folders `/images_{task}`
