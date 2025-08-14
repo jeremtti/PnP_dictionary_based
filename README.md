@@ -2,7 +2,7 @@
 
 This repository extends [dictionary-based_denoisers_FBPnP](https://github.com/tomMoral/dictionary-based_denoisers_FBPnP), the companion repository for **Analysis and Synthesis Denoisers for Forward-Backward Plug-and-Play Algorithms** ([hal.science/hal-04786802](https://hal.science/hal-04786802)).
 
-The experiments have two objectives:
+Our experiments have two objectives:
 1. Study the convergence behavior of the algorithm
 2. Obtain optimal reconstruction quality
 
@@ -19,7 +19,7 @@ To download the BSDS500 dataset needed for experiments, run the script `create_d
 
 ## I. Convergence Study
 
-The scripts `convergence_{task}.py` and their configurations `config_convergence_{task}.yaml` analyze the convergence of the algorithm for various values of inner iterations $L$ and regularization parameters $\lambda$ and compare the original and the fast versions of the algorithm.
+The scripts `convergence_{task}.py` and their configurations `config_convergence_{task}.yaml` analyze the convergence of the algorithm for various values of inner iterations $L$ and regularization parameters $\lambda$. They also compare the original and the fast versions of the algorithm.
 
 The plots are generated with `plot_convergence.py`.
 
